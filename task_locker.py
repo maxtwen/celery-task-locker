@@ -1,6 +1,7 @@
 # coding: utf-8
 
 import redis
+from trollius import Task
 
 
 class TaskLocker(object):
@@ -32,4 +33,19 @@ class TaskLocker(object):
         else:
             self.lock()
             return False
+
+
+class LockedTask(Task):
+    abstract = True
+
+    @staticmethod
+    def unlock(task_name, task_id):
+        locker = TaskLocker(task_name)
+        locker.unlock(task_id)
+
+    def on_failure(self, exc, task_id, args, kwargs, einfo):
+        self.unlock(self.name, args[0])
+
+    def on_success(self, retval, task_id, args, kwargs):
+        self.unlock(self.name, args[0])
 
