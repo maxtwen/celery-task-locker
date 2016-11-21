@@ -49,3 +49,19 @@ class LockedTask(Task):
     def on_success(self, retval, task_id, args, kwargs):
         self.unlock(self.name, args[0])
 
+
+def locked_task(f):
+    def dec(*args, **kwargs):
+        ts = TaskLocker(args[0].name)  # args[0] - self
+        if ts.check_or_lock():
+            return 'Locked'
+        try:
+            task_result = f(*args, **kwargs)
+        except:
+            raise
+        else:
+            return task_result
+        finally:
+            ts.unlock()
+
+    return dec
