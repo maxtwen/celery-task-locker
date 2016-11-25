@@ -2,6 +2,7 @@
 
 import redis
 from trollius import Task
+from celery.task import task
 
 
 class TaskLocker(object):
@@ -48,6 +49,14 @@ class LockedTask(Task):
 
     def on_success(self, retval, task_id, args, kwargs):
         self.unlock(self.name, args[0])
+
+
+def callback_unlock(queue):
+    @task(queue=queue)
+    def func(task, id_):
+        locker = TaskLocker(task)
+        return locker.unlock(id_)
+    return func
 
 
 def locked_task(f):
