@@ -3,6 +3,7 @@
 import redis
 from trollius import Task
 from celery.task import task
+from celery.canvas import group
 
 
 class TaskLocker(object):
@@ -74,3 +75,8 @@ def locked_task(f):
             ts.unlock()
 
     return dec
+
+
+def locked_group(task, ids, max_count=None):
+    locker = TaskLocker(task.name)
+    return group([task.si(id_) for id_ in locker.get_unprocessed_tasks(ids, max_count=max_count)])
