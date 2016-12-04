@@ -1,33 +1,64 @@
 # coding: utf-8
 
 import redis
-from trollius import Task
-from celery.task import task
 from celery.canvas import group
+from celery.task import task
+from celery import Task
+
+REDIS_HOST = None
+REDIS_PORT = None
+REDIS_DB = 15
 
 
 class TaskLocker(object):
-
-    def __init__(self, task_name, redis_db, redis_host, redis_port):
-
-        self.r = redis.StrictRedis(db=redis_db, host=redis_host, port=redis_port)
+    """Class for lock the task by means of redis
+    """
+    def __init__(self, task_name):
+        """
+        :param task_name: task unique name
+        """
+        self.r = redis.StrictRedis(db=REDIS_DB, host=REDIS_HOST, port=REDIS_PORT)
         self.task_name = task_name
 
     @staticmethod
     def get_key(*args):
+        """generate key for redis
+        """
         return ''.join(map(str, args))
 
     def check_lock(self, id_=0):
+        """checks for the presence of the task id to lock it
 
+        :param id_: task id
+        :return: redis server response
+        """
         return self.r.get(TaskLocker.get_key(self.task_name, id_))
 
     def lock(self, id_=0):
+        """lock task by task id
 
+        :param id_: task id
+        """
         self.r.set(TaskLocker.get_key(self.task_name, id_), 'true')
 
     def unlock(self, id_=0):
+        """unlocks the task of its identifier
 
+        :param id_: task id
+        """
         self.r.delete(TaskLocker.get_key(self.task_name, id_))
+
+    def get_unprocessed_tasks(self, ids, max_count=None):
+        """
+        :param ids: sequence of task id's
+        """
+        for id_ in ids:
+            if max_count and len(self.r.keys('%s*' % self.task_name)) >= max_count:
+                raise StopIteration
+            if self.check_lock(id_):
+                continue
+            self.lock(id_)
+            yield id_
 
     def check_or_lock(self):
         if self.check_lock():
@@ -35,6 +66,20 @@ class TaskLocker(object):
         else:
             self.lock()
             return False
+
+
+def callback_unlock(queue):
+    @task(queue=queue)
+    def func(task, id_):
+        """callback-function, delete trash key from redis
+
+        :param task: celery task
+        :param id_: task id
+        :return: redis server response
+        """
+        locker = TaskLocker(task)
+        return locker.unlock(id_)
+    return func
 
 
 class LockedTask(Task):
@@ -52,12 +97,15 @@ class LockedTask(Task):
         self.unlock(self.name, args[0])
 
 
-def callback_unlock(queue):
-    @task(queue=queue)
-    def func(task, id_):
-        locker = TaskLocker(task)
-        return locker.unlock(id_)
-    return func
+def locked_group(task, ids, max_count=None):
+    """generates a group locked tasks, after successful completion of each task will be invoked
+     callback, which will remove the key used to lock
+
+    :param task: celery task
+    :param ids: sequence of task id's
+    """
+    locker = TaskLocker(task.name)
+    return group([task.si(id_) for id_ in locker.get_unprocessed_tasks(ids, max_count=max_count)])
 
 
 def locked_task(f):
@@ -76,7 +124,3 @@ def locked_task(f):
 
     return dec
 
-
-def locked_group(task, ids, max_count=None):
-    locker = TaskLocker(task.name)
-    return group([task.si(id_) for id_ in locker.get_unprocessed_tasks(ids, max_count=max_count)])
