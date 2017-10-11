@@ -20,7 +20,9 @@ class TaskLocker(object):
         """
         :param task_name: task unique name
         """
-        self.r = redis.StrictRedis(db=REDIS_DB, host=REDIS_HOST, port=REDIS_PORT)
+        self.r = redis.StrictRedis(db=current_app.conf.TL_REDIS_DB,
+                                   host=current_app.conf.TL_REDIS_HOST,
+                                   port=current_app.conf.TL_REDIS_PORT)
         self.task_name = task_name
 
     @staticmethod
