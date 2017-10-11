@@ -1,13 +1,16 @@
 # coding: utf-8
 
+__all__ = ['locked_task', 'locked_group']
+
 import redis
 from celery.canvas import group
 from celery.task import task
 from celery import Task
+from celery import current_app
 
-REDIS_HOST = None
-REDIS_PORT = None
-REDIS_DB = 15
+REDIS_HOST = current_app.conf.TL_REDIS_HOST
+REDIS_PORT = current_app.conf.TL_REDIS_PORT
+REDIS_DB = current_app.conf.TL_REDIS_DB
 
 
 class TaskLocker(object):
