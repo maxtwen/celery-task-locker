@@ -1,8 +1,10 @@
 # celery-task-locker
 Ensuring a task is only executed one at a time
 
-### Installing
+## Installing
+```bash
 pip install celery-task-locker
+```
 
 ## Code Example
 
@@ -12,7 +14,6 @@ from datetime import timedelta
 from celery import Celery
 
 from celery_task_locker import locked_task, locked_group
-
 
 app = Celery()
 
