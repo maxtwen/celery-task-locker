@@ -1,4 +1,5 @@
 # coding: utf-8
+from functools import wraps
 
 __all__ = ['locked_task', 'locked_group']
 
@@ -7,10 +8,6 @@ from celery.canvas import group
 from celery.task import task
 from celery import Task
 from celery import current_app
-
-REDIS_HOST = current_app.conf.TL_REDIS_HOST
-REDIS_PORT = current_app.conf.TL_REDIS_PORT
-REDIS_DB = current_app.conf.TL_REDIS_DB
 
 
 class TaskLocker(object):
@@ -114,6 +111,7 @@ def locked_group(task, ids, max_count=None):
 
 
 def locked_task(f):
+    @wraps(f)
     def dec(*args, **kwargs):
         ts = TaskLocker(args[0].name)  # args[0] - self
         if ts.check_or_lock():
