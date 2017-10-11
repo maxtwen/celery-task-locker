@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='celery-task-locker',
-      version='0.1.1',
+      version='0.1.2',
       description='Ensuring a task is only executed one at a time',
       url='https://github.com/maxtwen/celery-task-locker',
       author='maxtwen',
