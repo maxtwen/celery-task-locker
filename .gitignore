@@ -1,0 +1,7 @@
+*.pyc
+*.iml
+build
+.idea
+dist
+celery_task_locker.egg-info
+.DS_Store
